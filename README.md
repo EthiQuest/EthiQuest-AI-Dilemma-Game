@@ -71,6 +71,37 @@ For a detailed project structure, see `docs/project_structure.md`.
    flask db upgrade
    ```
 
+## Running with Docker
+
+To run the application using Docker:
+
+1. Make sure you have Docker and Docker Compose installed on your system.
+
+2. Clone the repository:
+   ```
+   git clone https://github.com/your-username/ai-ethics-dilemma-game.git
+   cd ai-ethics-dilemma-game
+   ```
+
+3. Build and run the Docker containers:
+   ```
+   docker-compose up --build
+   ```
+
+4. Access the application at `http://localhost:3000`
+
+To stop the application, use `Ctrl+C` in the terminal where docker-compose is running.
+
+To run in detached mode:
+```
+docker-compose up -d
+```
+
+To stop and remove containers, networks, and volumes:
+```
+docker-compose down
+```
+
 ## Running the Application
 
 1. Start the backend server:
