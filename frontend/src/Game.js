@@ -6,6 +6,7 @@ function Game() {
   const [scenarioId, setScenarioId] = useState(null);
   const [options, setOptions] = useState([]);
   const [result, setResult] = useState('');
+  const [score, setScore] = useState(0);
 
   useEffect(() => {
     fetchScenario();
@@ -23,13 +24,14 @@ function Game() {
     }
   };
 
-  const handleChoice = async (option) => {
+  const handleChoice = async (optionId) => {
     try {
       const response = await axios.post('http://localhost:5000/api/choice', {
         scenarioId: scenarioId,
-        choice: option
+        choiceId: optionId
       });
       setResult(response.data.consequence);
+      setScore(prevScore => prevScore + response.data.score);
     } catch (error) {
       console.error('Error submitting choice:', error);
     }
@@ -38,15 +40,16 @@ function Game() {
   return (
     <div className='container mx-auto p-4'>
       <h1 className='text-2xl font-bold mb-4'>AI Ethics Dilemma Game</h1>
+      <p className='text-xl mb-2'>Score: {score}</p>
       <p className='mb-4'>{scenario}</p>
       <div className='space-y-2'>
-        {options.map((option, index) => (
+        {options.map((option) => (
           <button
-            key={index}
+            key={option.id}
             className='w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600'
-            onClick={() => handleChoice(option)}
+            onClick={() => handleChoice(option.id)}
           >
-            {option}
+            {option.text}
           </button>
         ))}
       </div>
