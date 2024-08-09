@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-function Game() {
+function Game({ token }) {
   const [scenario, setScenario] = useState('');
   const [scenarioId, setScenarioId] = useState(null);
   const [options, setOptions] = useState([]);
@@ -10,12 +10,27 @@ function Game() {
   const [scenarioCount, setScenarioCount] = useState(0);
 
   useEffect(() => {
+    fetchProgress();
     fetchScenario();
   }, []);
 
+  const fetchProgress = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/progress', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setScore(response.data.score);
+      setScenarioCount(response.data.current_scenario);
+    } catch (error) {
+      console.error('Error fetching progress:', error);
+    }
+  };
+
   const fetchScenario = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/scenario');
+      const response = await axios.get('http://localhost:5000/api/scenario', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setScenario(response.data.scenario);
       setScenarioId(response.data.id);
       setOptions(response.data.options);
@@ -31,9 +46,11 @@ function Game() {
       const response = await axios.post('http://localhost:5000/api/choice', {
         scenarioId: scenarioId,
         choiceId: optionId
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
       setResult(response.data.consequence);
-      setScore(prevScore => prevScore + response.data.score);
+      setScore(response.data.score);
     } catch (error) {
       console.error('Error submitting choice:', error);
     }
