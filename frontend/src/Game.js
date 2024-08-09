@@ -7,6 +7,7 @@ function Game() {
   const [options, setOptions] = useState([]);
   const [result, setResult] = useState('');
   const [score, setScore] = useState(0);
+  const [scenarioCount, setScenarioCount] = useState(0);
 
   useEffect(() => {
     fetchScenario();
@@ -19,6 +20,7 @@ function Game() {
       setScenarioId(response.data.id);
       setOptions(response.data.options);
       setResult('');
+      setScenarioCount(prevCount => prevCount + 1);
     } catch (error) {
       console.error('Error fetching scenario:', error);
     }
@@ -40,7 +42,10 @@ function Game() {
   return (
     <div className='container mx-auto p-4'>
       <h1 className='text-2xl font-bold mb-4'>AI Ethics Dilemma Game</h1>
-      <p className='text-xl mb-2'>Score: {score}</p>
+      <div className='flex justify-between mb-4'>
+        <p className='text-xl'>Score: {score}</p>
+        <p className='text-xl'>Scenario: {scenarioCount}</p>
+      </div>
       <p className='mb-4'>{scenario}</p>
       <div className='space-y-2'>
         {options.map((option) => (
