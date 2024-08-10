@@ -59,27 +59,72 @@ def add_addon():
             return jsonify({"msg": "Add-on added successfully"}), 200
     return jsonify({"msg": "Invalid add-on"}), 400
 
-# Modify the get_scenario route to account for subscription tiers
+# Add a new route to set preferred difficulty
+@app.route('/api/set_difficulty', methods=['POST'])
+@jwt_required()
+def set_difficulty():
+    username = get_jwt_identity()
+    user = User.query.filter_by(username=username).first()
+    new_difficulty = request.json.get('difficulty', None)
+    if new_difficulty in ['easy', 'medium', 'hard']:
+        user.preferred_difficulty = new_difficulty
+        db.session.commit()
+        return jsonify({"msg": "Difficulty set successfully"}), 200
+    return jsonify({"msg": "Invalid difficulty level"}), 400
+
+# Update the get_scenario route to account for difficulty
 @app.route('/api/scenario', methods=['GET'])
 @jwt_required()
 def get_scenario():
     username = get_jwt_identity()
     user = User.query.filter_by(username=username).first()
-    if user.subscription_tier == 'free':
-        available_scenarios = [s for s in scenarios if s['difficulty'] == 'basic']
-    elif user.subscription_tier == 'premium':
-        available_scenarios = [s for s in scenarios if s['difficulty'] in ['basic', 'advanced']]
-    else:  # enterprise
-        available_scenarios = scenarios  # All scenarios including custom ones
-
+    available_scenarios = [s for s in scenarios if s['difficulty'] == user.preferred_difficulty]
+    if not available_scenarios:
+        available_scenarios = scenarios  # Fallback to all scenarios if none match the preferred difficulty
     scenario = random.choice(available_scenarios)
     user.current_scenario = scenario['id']
     db.session.commit()
     return jsonify({
         'id': scenario['id'],
         'scenario': scenario['scenario'],
+        'difficulty': scenario['difficulty'],
         'options': [{'text': option['text'], 'id': option['id']} for option in scenario['options']]
     })
+
+# Update the make_choice route to adjust scoring based on difficulty
+@app.route('/api/choice', methods=['POST'])
+@jwt_required()
+def make_choice():
+    username = get_jwt_identity()
+    user = User.query.filter_by(username=username).first()
+    data = request.json
+    scenario_id = data['scenarioId']
+    choice_id = data['choiceId']
+    
+    scenario = next((s for s in scenarios if s['id'] == scenario_id), None)
+    if not scenario:
+        return jsonify({'error': 'Scenario not found'}), 404
+    
+    chosen_option = next((o for o in scenario['options'] if o['id'] == choice_id), None)
+    if not chosen_option:
+        return jsonify({'error': 'Invalid choice'}), 400
+    
+    # Adjust score based on difficulty
+    difficulty_multiplier = {'easy': 0.5, 'medium': 1, 'hard': 1.5}
+    adjusted_score = chosen_option['score'] * difficulty_multiplier[scenario['difficulty']]
+    
+    user.score += adjusted_score
+    db.session.commit()
+    
+    return jsonify({
+        'consequence': chosen_option['consequence'],
+        'score': user.score,
+        'points_earned': adjusted_score
+    })
+
+
+
+
 
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -103,31 +148,6 @@ def login():
         access_token = create_access_token(identity=username)
         return jsonify(access_token=access_token), 200
     return jsonify({"msg": "Bad username or password"}), 401
-
-@app.route('/api/choice', methods=['POST'])
-@jwt_required()
-def make_choice():
-    username = get_jwt_identity()
-    user = User.query.filter_by(username=username).first()
-    data = request.json
-    scenario_id = data['scenarioId']
-    choice_id = data['choiceId']
-    
-    scenario = next((s for s in scenarios if s['id'] == scenario_id), None)
-    if not scenario:
-        return jsonify({'error': 'Scenario not found'}), 404
-    
-    chosen_option = next((o for o in scenario['options'] if o['id'] == choice_id), None)
-    if not chosen_option:
-        return jsonify({'error': 'Invalid choice'}), 400
-    
-    user.score += chosen_option['score']
-    db.session.commit()
-    
-    return jsonify({
-        'consequence': chosen_option['consequence'],
-        'score': user.score
-    })
 
 @app.route('/api/progress', methods=['GET'])
 @jwt_required()
