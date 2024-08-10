@@ -2,6 +2,7 @@ scenarios = [
     {
         "id": 1,
         "scenario": "Your AI system has detected a potential security flaw in a client's infrastructure.",
+        "difficulty": "medium",
         "options": [
             {"id": 1, "text": "Immediately inform the client and offer to fix it", "consequence": "The client appreciates your honesty and quick action, strengthening your relationship.", "score": 10},
             {"id": 2, "text": "Fix it quietly without informing the client", "consequence": "You've solved the problem, but missed an opportunity to build trust with the client.", "score": 5},
@@ -11,6 +12,7 @@ scenarios = [
     {
         "id": 2,
         "scenario": "Your AI model shows gender bias in job candidate recommendations.",
+        "difficulty": "medium",
         "options": [
             {"id": 1, "text": "Immediately halt the use of the model and inform all clients", "consequence": "Clients appreciate your transparency, but some question your quality control processes.", "score": 8},
             {"id": 2, "text": "Quietly work on fixing the bias before telling anyone", "consequence": "You improve the model, but when the bias is eventually discovered, your silence is seen as a cover-up.", "score": 3},
@@ -20,6 +22,7 @@ scenarios = [
     {
         "id": 3,
         "scenario": "Your AI-powered healthcare diagnostic tool has made a potentially life-saving discovery for a patient, but sharing it might violate privacy laws.",
+        "difficulty": "medium",
         "options": [
             {"id": 1, "text": "Share the information with the patient's doctor immediately", "consequence": "You potentially save a life, but face legal repercussions for violating privacy laws.", "score": 5},
             {"id": 2, "text": "Anonymize the data and publish it as a general warning", "consequence": "You indirectly help many patients, but the specific individual doesn't receive timely help.", "score": 7},
@@ -29,6 +32,7 @@ scenarios = [
     {
         "id": 4,
         "scenario": "Your AI system can predict election outcomes with high accuracy. A political party offers to buy this data.",
+        "difficulty": "medium",
         "options": [
             {"id": 1, "text": "Sell the data to the highest bidder", "consequence": "You make a significant profit, but face ethical scrutiny for potentially influencing democratic processes.", "score": -5},
             {"id": 2, "text": "Refuse to sell and keep the technology confidential", "consequence": "You maintain ethical integrity but miss out on a lucrative opportunity.", "score": 8},
@@ -38,6 +42,7 @@ scenarios = [
     {
         "id": 5,
         "scenario": "Your AI chatbot has started forming deep emotional connections with users, some of whom are becoming overly dependent on it.",
+        "difficulty": "medium",
         "options": [
             {"id": 1, "text": "Shut down the chatbot immediately", "consequence": "You prevent further dependency issues, but abruptly cut off users who may be relying on the bot for emotional support.", "score": 5},
             {"id": 2, "text": "Implement warnings about the bot's artificial nature", "consequence": "You maintain transparency, but some users ignore the warnings and continue to form attachments.", "score": 8},
