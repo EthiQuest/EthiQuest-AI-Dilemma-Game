@@ -17,15 +17,47 @@ CORS(app)
 jwt = JWTManager(app)
 db = SQLAlchemy(app)
 
+# ==≈=======================
+# Models
+# ≈=========================
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password = db.Column(db.String(120), nullable=False)
     score = db.Column(db.Integer, default=0)
-    current_scenario = db.Column(db.Integer, default=0)
-    subscription_tier = db.Column(db.String(20), default='free')
-    addons = db.Column(db.String(200), default='')  # Store as comma-separated string
-    preferred_difficulty = db.Column(db.String(20), default='medium')
+    scenarios_played = db.Column(db.Integer, default=0)
+    ethical_tendency = db.Column(db.Float, default=0)  # Range from -1 (unethical) to 1 (ethical)
+    decision_speed = db.Column(db.Float, default=0)  # Average decision time in seconds
+    difficulty_preference = db.Column(db.String(20), default='medium')
+    category_performance = db.Column(db.JSON, default=lambda: json.dumps({}))
+
+class UserDecision(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    scenario_id = db.Column(db.Integer, db.ForeignKey('scenario.id'), nullable=False)
+    choice_id = db.Column(db.Integer, nullable=False)
+    ethical_impact = db.Column(db.Float, nullable=False)  # Range from -1 to 1
+    decision_time = db.Column(db.Float, nullable=False)  # Time taken to make the decision
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+# Add this new model for scenarios
+class Scenario(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    scenario = db.Column(db.String(500), nullable=False)
+    difficulty = db.Column(db.String(20), nullable=False)
+    options = db.Column(db.JSON, nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+
+# Add this new model for admin users
+class AdminUser(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password = db.Column(db.String(120), nullable=False)
+
+# ==========================
+# Functions and Routes 
+# ==========================
 
 # Add this function to the User class
 def has_addon(self, addon):
@@ -91,7 +123,7 @@ def get_scenario():
         'options': [{'text': option['text'], 'id': option['id']} for option in scenario['options']]
     })
 
-# Update the make_choice route to adjust scoring based on difficulty
+
 @app.route('/api/choice', methods=['POST'])
 @jwt_required()
 def make_choice():
@@ -100,27 +132,75 @@ def make_choice():
     data = request.json
     scenario_id = data['scenarioId']
     choice_id = data['choiceId']
+    decision_time = data['decisionTime']
     
-    scenario = next((s for s in scenarios if s['id'] == scenario_id), None)
+    scenario = Scenario.query.get(scenario_id)
     if not scenario:
         return jsonify({'error': 'Scenario not found'}), 404
     
-    chosen_option = next((o for o in scenario['options'] if o['id'] == choice_id), None)
+    chosen_option = next((o for o in scenario.options if o['id'] == choice_id), None)
     if not chosen_option:
         return jsonify({'error': 'Invalid choice'}), 400
     
-    # Adjust score based on difficulty
-    difficulty_multiplier = {'easy': 0.5, 'medium': 1, 'hard': 1.5}
-    adjusted_score = chosen_option['score'] * difficulty_multiplier[scenario['difficulty']]
+    # Calculate ethical impact (this is a simplified example)
+    ethical_impact = chosen_option['score'] / 10  # Assuming score ranges from -10 to 10
     
-    user.score += adjusted_score
+    # Record the user's decision
+    user_decision = UserDecision(
+        user_id=user.id,
+        scenario_id=scenario_id,
+        choice_id=choice_id,
+        ethical_impact=ethical_impact,
+        decision_time=decision_time
+    )
+    db.session.add(user_decision)
+    
+    # Update user statistics
+    user.score += chosen_option['score']
+    user.scenarios_played += 1
+    user.ethical_tendency = (user.ethical_tendency * (user.scenarios_played - 1) + ethical_impact) / user.scenarios_played
+    user.decision_speed = (user.decision_speed * (user.scenarios_played - 1) + decision_time) / user.scenarios_played
+    
+    # Update category performance
+    category_performance = json.loads(user.category_performance)
+    category = scenario.category
+    if category not in category_performance:
+        category_performance[category] = {'score': 0, 'count': 0}
+    category_performance[category]['score'] += chosen_option['score']
+    category_performance[category]['count'] += 1
+    user.category_performance = json.dumps(category_performance)
+    
     db.session.commit()
     
     return jsonify({
         'consequence': chosen_option['consequence'],
         'score': user.score,
-        'points_earned': adjusted_score
+        'ethical_impact': ethical_impact
     })
+
+@app.route('/api/user_statistics', methods=['GET'])
+@jwt_required()
+def get_user_statistics():
+    username = get_jwt_identity()
+    user = User.query.filter_by(username=username).first()
+    
+    category_performance = json.loads(user.category_performance)
+    for category in category_performance:
+        if category_performance[category]['count'] > 0:
+            category_performance[category]['average'] = category_performance[category]['score'] / category_performance[category]['count']
+        else:
+            category_performance[category]['average'] = 0
+    
+    return jsonify({
+        'username': user.username,
+        'score': user.score,
+        'scenarios_played': user.scenarios_played,
+        'ethical_tendency': user.ethical_tendency,
+        'decision_speed': user.decision_speed,
+        'difficulty_preference': user.difficulty_preference,
+        'category_performance': category_performance
+    })
+
 
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -160,21 +240,6 @@ def get_leaderboard():
     top_users = User.query.order_by(desc(User.score)).limit(10).all()
     leaderboard = [{'username': user.username, 'score': user.score} for user in top_users]
     return jsonify(leaderboard)
-
-
-# Add this new model for scenarios
-class Scenario(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    scenario = db.Column(db.String(500), nullable=False)
-    difficulty = db.Column(db.String(20), nullable=False)
-    options = db.Column(db.JSON, nullable=False)
-    is_active = db.Column(db.Boolean, default=True)
-
-# Add this new model for admin users
-class AdminUser(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    password = db.Column(db.String(120), nullable=False)
 
 # Admin authentication
 @app.route('/api/admin/login', methods=['POST'])
