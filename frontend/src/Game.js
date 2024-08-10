@@ -7,24 +7,11 @@ function Game({ token }) {
   const [options, setOptions] = useState([]);
   const [result, setResult] = useState('');
   const [score, setScore] = useState(0);
-  const [scenarioCount, setScenarioCount] = useState(0);
+  const [difficulty, setDifficulty] = useState('medium');
 
   useEffect(() => {
-    fetchProgress();
     fetchScenario();
-  }, []);
-
-  const fetchProgress = async () => {
-    try {
-      const response = await axios.get('http://localhost:5000/api/progress', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setScore(response.data.score);
-      setScenarioCount(response.data.current_scenario);
-    } catch (error) {
-      console.error('Error fetching progress:', error);
-    }
-  };
+  }, [difficulty]);
 
   const fetchScenario = async () => {
     try {
@@ -35,7 +22,6 @@ function Game({ token }) {
       setScenarioId(response.data.id);
       setOptions(response.data.options);
       setResult('');
-      setScenarioCount(prevCount => prevCount + 1);
     } catch (error) {
       console.error('Error fetching scenario:', error);
     }
@@ -56,12 +42,34 @@ function Game({ token }) {
     }
   };
 
+  const handleDifficultyChange = async (newDifficulty) => {
+    try {
+      await axios.post('http://localhost:5000/api/set_difficulty', {
+        difficulty: newDifficulty
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setDifficulty(newDifficulty);
+    } catch (error) {
+      console.error('Error setting difficulty:', error);
+    }
+  };
+
   return (
     <div className='container mx-auto p-4'>
       <h1 className='text-2xl font-bold mb-4'>AI Ethics Dilemma Game</h1>
-      <div className='flex justify-between mb-4'>
+      <div className='mb-4'>
         <p className='text-xl'>Score: {score}</p>
-        <p className='text-xl'>Scenario: {scenarioCount}</p>
+        <p>Difficulty: {difficulty}</p>
+        <select 
+          value={difficulty} 
+          onChange={(e) => handleDifficultyChange(e.target.value)}
+          className='mt-2 p-2 border rounded'
+        >
+          <option value="easy">Easy</option>
+          <option value="medium">Medium</option>
+          <option value="hard">Hard</option>
+        </select>
       </div>
       <p className='mb-4'>{scenario}</p>
       <div className='space-y-2'>
