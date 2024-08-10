@@ -5,6 +5,7 @@ import Register from './Register';
 import Leaderboard from './Leaderboard';
 import SubscriptionManager from './SubscriptionManager';
 import AdminPanel from './AdminPanel';
+import UserStatistics from './UserStatistics';
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
@@ -12,6 +13,7 @@ function App() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showSubscription, setShowSubscription] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [showStatistics, setShowStatistics] = useState(false);
 
   const handleLogin = (newToken, admin = false) => {
     localStorage.setItem('token', newToken);
