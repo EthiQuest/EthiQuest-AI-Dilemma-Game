@@ -5,6 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 import random
 from werkzeug.security import generate_password_hash, check_password_hash
 from game_data import scenarios
+from sqlalchemy import desc
 
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # Change this!
@@ -93,6 +94,12 @@ def get_progress():
         'score': user.score,
         'current_scenario': user.current_scenario
     })
+
+@app.route('/api/leaderboard', methods=['GET'])
+def get_leaderboard():
+    top_users = User.query.order_by(desc(User.score)).limit(10).all()
+    leaderboard = [{'username': user.username, 'score': user.score} for user in top_users]
+    return jsonify(leaderboard)
 
 if __name__ == '__main__':
     db.create_all()
