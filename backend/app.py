@@ -22,6 +22,62 @@ class User(db.Model):
     password = db.Column(db.String(120), nullable=False)
     score = db.Column(db.Integer, default=0)
     current_scenario = db.Column(db.Integer, default=0)
+    subscription_tier = db.Column(db.String(20), default='free')
+    addons = db.Column(db.String(200), default='')  # Store as comma-separated string
+
+# Add this function to the User class
+def has_addon(self, addon):
+    return addon in self.addons.split(',')
+
+# Add these new routes
+@app.route('/api/upgrade', methods=['POST'])
+@jwt_required()
+def upgrade_subscription():
+    username = get_jwt_identity()
+    user = User.query.filter_by(username=username).first()
+    new_tier = request.json.get('tier', None)
+    if new_tier in ['free', 'premium', 'enterprise']:
+        user.subscription_tier = new_tier
+        db.session.commit()
+        return jsonify({"msg": "Subscription upgraded successfully"}), 200
+    return jsonify({"msg": "Invalid subscription tier"}), 400
+
+@app.route('/api/add_addon', methods=['POST'])
+@jwt_required()
+def add_addon():
+    username = get_jwt_identity()
+    user = User.query.filter_by(username=username).first()
+    new_addon = request.json.get('addon', None)
+    if new_addon:
+        addons = user.addons.split(',') if user.addons else []
+        if new_addon not in addons:
+            addons.append(new_addon)
+            user.addons = ','.join(addons)
+            db.session.commit()
+            return jsonify({"msg": "Add-on added successfully"}), 200
+    return jsonify({"msg": "Invalid add-on"}), 400
+
+# Modify the get_scenario route to account for subscription tiers
+@app.route('/api/scenario', methods=['GET'])
+@jwt_required()
+def get_scenario():
+    username = get_jwt_identity()
+    user = User.query.filter_by(username=username).first()
+    if user.subscription_tier == 'free':
+        available_scenarios = [s for s in scenarios if s['difficulty'] == 'basic']
+    elif user.subscription_tier == 'premium':
+        available_scenarios = [s for s in scenarios if s['difficulty'] in ['basic', 'advanced']]
+    else:  # enterprise
+        available_scenarios = scenarios  # All scenarios including custom ones
+
+    scenario = random.choice(available_scenarios)
+    user.current_scenario = scenario['id']
+    db.session.commit()
+    return jsonify({
+        'id': scenario['id'],
+        'scenario': scenario['scenario'],
+        'options': [{'text': option['text'], 'id': option['id']} for option in scenario['options']]
+    })
 
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -45,20 +101,6 @@ def login():
         access_token = create_access_token(identity=username)
         return jsonify(access_token=access_token), 200
     return jsonify({"msg": "Bad username or password"}), 401
-
-@app.route('/api/scenario', methods=['GET'])
-@jwt_required()
-def get_scenario():
-    username = get_jwt_identity()
-    user = User.query.filter_by(username=username).first()
-    scenario = random.choice(scenarios)
-    user.current_scenario = scenario['id']
-    db.session.commit()
-    return jsonify({
-        'id': scenario['id'],
-        'scenario': scenario['scenario'],
-        'options': [{'text': option['text'], 'id': option['id']} for option in scenario['options']]
-    })
 
 @app.route('/api/choice', methods=['POST'])
 @jwt_required()
