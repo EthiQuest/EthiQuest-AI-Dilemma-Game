@@ -6,6 +6,7 @@ import random
 from werkzeug.security import generate_password_hash, check_password_hash
 from game_data import scenarios
 from sqlalchemy import desc
+from flask import request
 
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # Change this!
@@ -24,6 +25,7 @@ class User(db.Model):
     current_scenario = db.Column(db.Integer, default=0)
     subscription_tier = db.Column(db.String(20), default='free')
     addons = db.Column(db.String(200), default='')  # Store as comma-separated string
+    preferred_difficulty = db.Column(db.String(20), default='medium')
 
 # Add this function to the User class
 def has_addon(self, addon):
