@@ -6,7 +6,7 @@ import random
 from werkzeug.security import generate_password_hash, check_password_hash
 from game_data import scenarios
 from sqlalchemy import desc
-from flask import request
+
 
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # Change this!
@@ -122,10 +122,6 @@ def make_choice():
         'points_earned': adjusted_score
     })
 
-
-
-
-
 @app.route('/api/register', methods=['POST'])
 def register():
     username = request.json.get('username', None)
@@ -164,6 +160,124 @@ def get_leaderboard():
     top_users = User.query.order_by(desc(User.score)).limit(10).all()
     leaderboard = [{'username': user.username, 'score': user.score} for user in top_users]
     return jsonify(leaderboard)
+
+
+# Add this new model for scenarios
+class Scenario(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    scenario = db.Column(db.String(500), nullable=False)
+    difficulty = db.Column(db.String(20), nullable=False)
+    options = db.Column(db.JSON, nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+
+# Add this new model for admin users
+class AdminUser(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password = db.Column(db.String(120), nullable=False)
+
+# Admin authentication
+@app.route('/api/admin/login', methods=['POST'])
+def admin_login():
+    username = request.json.get('username', None)
+    password = request.json.get('password', None)
+    admin = AdminUser.query.filter_by(username=username).first()
+    if admin and admin.password == password:  # In a real app, use proper password hashing
+        access_token = create_access_token(identity=username)
+        return jsonify(access_token=access_token), 200
+    return jsonify({"msg": "Bad username or password"}), 401
+
+# CRUD operations for scenarios
+@app.route('/api/admin/scenarios', methods=['GET'])
+@jwt_required()
+def get_all_scenarios():
+    scenarios = Scenario.query.all()
+    return jsonify([{
+        'id': s.id,
+        'scenario': s.scenario,
+        'difficulty': s.difficulty,
+        'options': s.options,
+        'is_active': s.is_active
+    } for s in scenarios]), 200
+
+@app.route('/api/admin/scenarios', methods=['POST'])
+@jwt_required()
+def create_scenario():
+    data = request.json
+    new_scenario = Scenario(
+        scenario=data['scenario'],
+        difficulty=data['difficulty'],
+        options=data['options'],
+        is_active=data.get('is_active', True)
+    )
+    db.session.add(new_scenario)
+    db.session.commit()
+    return jsonify({
+        'id': new_scenario.id,
+        'scenario': new_scenario.scenario,
+        'difficulty': new_scenario.difficulty,
+        'options': new_scenario.options,
+        'is_active': new_scenario.is_active
+    }), 201
+
+@app.route('/api/admin/scenarios/<int:id>', methods=['PUT'])
+@jwt_required()
+def update_scenario(id):
+    scenario = Scenario.query.get(id)
+    if not scenario:
+        return jsonify({"msg": "Scenario not found"}), 404
+    data = request.json
+    scenario.scenario = data.get('scenario', scenario.scenario)
+    scenario.difficulty = data.get('difficulty', scenario.difficulty)
+    scenario.options = data.get('options', scenario.options)
+    scenario.is_active = data.get('is_active', scenario.is_active)
+    db.session.commit()
+    return jsonify({
+        'id': scenario.id,
+        'scenario': scenario.scenario,
+        'difficulty': scenario.difficulty,
+        'options': scenario.options,
+        'is_active': scenario.is_active
+    }), 200
+
+@app.route('/api/admin/scenarios/<int:id>', methods=['DELETE'])
+@jwt_required()
+def delete_scenario(id):
+    scenario = Scenario.query.get(id)
+    if not scenario:
+        return jsonify({"msg": "Scenario not found"}), 404
+    db.session.delete(scenario)
+    db.session.commit()
+    return jsonify({"msg": "Scenario deleted"}), 200
+
+# Update the get_scenario route to use the database
+@app.route('/api/scenario', methods=['GET'])
+@jwt_required()
+def get_scenario():
+    username = get_jwt_identity()
+    user = User.query.filter_by(username=username).first()
+    available_scenarios = Scenario.query.filter_by(difficulty=user.preferred_difficulty, is_active=True).all()
+    if not available_scenarios:
+        available_scenarios = Scenario.query.filter_by(is_active=True).all()
+    scenario = random.choice(available_scenarios)
+    return jsonify({
+        'id': scenario.id,
+        'scenario': scenario.scenario,
+        'difficulty': scenario.difficulty,
+        'options': scenario.options
+    })
+
+
+
+
+# Don't forget to create the database tables
+@app.before_first_request
+def create_tables():
+    db.create_all()
+
+
+
+
 
 if __name__ == '__main__':
     db.create_all()
