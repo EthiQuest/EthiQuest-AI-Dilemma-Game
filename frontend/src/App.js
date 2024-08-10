@@ -38,6 +38,7 @@ function App() {
     );
   }
 
+
   return (
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-4">
@@ -52,22 +53,29 @@ function App() {
             </button>
           )}
           <button 
-            onClick={() => {setShowLeaderboard(false); setShowSubscription(!showSubscription); setShowAdminPanel(false);}} 
+            onClick={() => {setShowLeaderboard(false); setShowSubscription(!showSubscription); setShowAdminPanel(false); setShowStatistics(false);}} 
             className="p-2 bg-blue-500 text-white rounded mr-2"
           >
             {showSubscription ? 'Hide Subscription' : 'Show Subscription'}
           </button>
           <button 
-            onClick={() => {setShowSubscription(false); setShowLeaderboard(!showLeaderboard); setShowAdminPanel(false);}} 
-            className="p-2 bg-green-500 text-white rounded"
+            onClick={() => {setShowSubscription(false); setShowLeaderboard(!showLeaderboard); setShowAdminPanel(false); setShowStatistics(false);}} 
+            className="p-2 bg-green-500 text-white rounded mr-2"
           >
             {showLeaderboard ? 'Hide Leaderboard' : 'Show Leaderboard'}
+          </button>
+          <button 
+            onClick={() => {setShowSubscription(false); setShowLeaderboard(false); setShowAdminPanel(false); setShowStatistics(!showStatistics);}} 
+            className="p-2 bg-yellow-500 text-white rounded"
+          >
+            {showStatistics ? 'Hide Statistics' : 'Show Statistics'}
           </button>
         </div>
       </div>
       {showAdminPanel ? <AdminPanel token={token} /> :
        showSubscription ? <SubscriptionManager token={token} /> : 
        showLeaderboard ? <Leaderboard /> : 
+       showStatistics ? <UserStatistics token={token} /> :
        <Game token={token} />}
     </div>
   );
