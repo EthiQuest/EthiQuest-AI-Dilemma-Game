@@ -1,8 +1,9 @@
 # Use an official Node runtime as the base image
-FROM node:14
+FROM node:16
 
 # Set the working directory in the container
 WORKDIR /app
+RUN npm cache clean --force
 
 # Copy package.json and package-lock.json
 COPY package*.json ./
